@@ -10,9 +10,13 @@ vkpurge_output=$(vkpurge list)
 num_entries=$(echo "$vkpurge_output" | wc -l)
 
 if [ $num_entries -gt 2 ]; then
-    first_entry=$(echo "$vkpurge_output" | head -n 1 | awk '{print $1}')
-    sudo vkpurge rm $first_entry
-    echo "Oldest Kernel '$first_entry' removed with vkpurge rm." >> $LOG
+    while [ $num_entries -gt 2 ]; do
+        first_entry=$(echo "$vkpurge_output" | head -n 1 | awk '{print $1}')
+        sudo vkpurge rm $first_entry
+        echo "Oldest Kernel '$first_entry' removed with vkpurge rm." >> $LOG
+        vkpurge_output=$(vkpurge list)
+        num_entries=$(echo "$vkpurge_output" | wc -l)
+    done
 else
     echo "There are $num_entries kernel entries. No action needed." >> $LOG
 fi
@@ -22,8 +26,8 @@ fi
 #######################################
 
 echo "Removing package cache and orphaned packages" >> $LOG
-sudo xbps-remove -oy >> $LOG
-sudo xbps-remove -Oy >> $LOG
+sudo xbps-remove -oy >> $LOG 2>&1
+sudo xbps-remove -Oy >> $LOG 2>&1
 if [ $? -ne 0 ]; then
     echo "Removing orphaned packages failed" >> $LOG
 else 
@@ -35,7 +39,7 @@ fi
 #######################################
 
 echo "Setting IP range" >> $LOG
-sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
+sudo sysctl -w net.ipv4.ping_group_range="0 2147483647" >> $LOG 2>&1
 echo "Cleanup complete, proceeding" >> $LOG
 
 #######################################
@@ -43,53 +47,67 @@ echo "Cleanup complete, proceeding" >> $LOG
 # Remove this section if you wanna make your own changes to any of the lazy void scripts.
 #######################################
 
-
-# Config
-REPO_URL="https://github.com/user/repo/archive/refs/heads/main.tar.gz"
-DEST_DIR="/pfad/zu/zielverzeichnis"
+echo "Updating Lazyvoid scripts" >> $LOG
+REPO_URL="https://github.com/Barba-Q/lazyvoid/archive/refs/heads/main.tar.gz"
 TMP_DIR="/tmp/repo_temp"
 ARCHIVE="/tmp/repo.tar.gz"
 
-# Remove old tmp files
+# Update targets
+FILES_TO_UPDATE=(
+    "/etc/default/grub"
+    "/etc/runit/core-services/20-lazy-boot.sh"
+    "/etc/xbps.d/blacklist.conf"
+    "/usr/local/bin/btrfs-snapshot.sh"
+)
+
+# Remove last temp files
 rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 
-# download lazy void repo
-wget -O "$ARCHIVE" "$REPO_URL"
-tar -xzf "$ARCHIVE" -C "$TMP_DIR" --strip-components=1
+# Download and unpack repository
+echo "Downloading repository..." >> $LOG
+wget -O "$ARCHIVE" "$REPO_URL" >> $LOG 2>&1
+echo "Extracting repository..." >> $LOG
+tar -xzf "$ARCHIVE" -C "$TMP_DIR" --strip-components=1 >> $LOG 2>&1
 
-# Compare and update
-find "$TMP_DIR" -type f | while read -r FILE; do
-    REL_PATH="${FILE#$TMP_DIR/}"
-    DEST_FILE="$DEST_DIR/$REL_PATH"
+echo "Comparing and updating files..." >> $LOG
+for DEST_FILE in "${FILES_TO_UPDATE[@]}"; do
+    REL_PATH="${DEST_FILE#/}"
+    SRC_FILE="$TMP_DIR/$REL_PATH"
     
-    if [[ -f "$DEST_FILE" ]]; then
-        # Compare
-        if [[ $(stat -c%s "$FILE") -ne $(stat -c%s "$DEST_FILE") ]]; then
-            echo "Replacing: $DEST_FILE"
-            cp "$FILE" "$DEST_FILE"
+    if [[ -f "$SRC_FILE" ]]; then
+        if [[ -f "$DEST_FILE" ]]; then
+            if ! cmp -s "$SRC_FILE" "$DEST_FILE"; then
+                echo "Creating backup: ${DEST_FILE}.bak" >> $LOG
+                cp "$DEST_FILE" "${DEST_FILE}.bak"
+                echo "Updating: $DEST_FILE" >> $LOG
+                cp "$SRC_FILE" "$DEST_FILE"
+            fi
+        else
+            echo "Adding new file: $DEST_FILE" >> $LOG
+            mkdir -p "$(dirname "$DEST_FILE")"
+            cp "$SRC_FILE" "$DEST_FILE"
         fi
     else
-        # File is missing or new
-        echo "Copy new file: $DEST_FILE"
-        mkdir -p "$(dirname "$DEST_FILE")"
-        cp "$FILE" "$DEST_FILE"
+        echo "Warning: $SRC_FILE not found in repository" >> $LOG
     fi
-
 done
 
-# remove temp files
+echo "Cleanup temporary files" >> $LOG
 rm -rf "$TMP_DIR" "$ARCHIVE"
 
-echo "Lazyvoid scripts are up to date"
+echo "Lazyvoid scripts are up to date" >> $LOG
 
 #######################################
 # Link to update and snapshot script
 #######################################
 
-echo "Initial boot complete, creating snapshot & update" & sudo sh /usr/local/bin/btrfs_snapshot.sh &
+echo "Initial boot complete, creating snapshot & update" >> $LOG
+sudo sh /usr/local/bin/btrfs_snapshot.sh >> $LOG 2>&1
 date -I >> $LOG
 
 #######################################
 # End
 #######################################
+
+echo "Lazy-boot process completed" >> $LOG
