@@ -2,6 +2,10 @@
 LOG=/var/log/lazy-boot.log
 # set -x  # Uncomment for debugging
 
+mkdir -p /var/log
+touch $LOG
+chmod 644 $LOG
+
 #######################################
 # Checking for btrfs filesystem
 #######################################
@@ -17,7 +21,7 @@ is_btrfs() {
 #######################################
 
 is_home_on_root_partition() {
-    echo "Checking for seperate home partition"  >> $LOG
+    echo "Checking for separate home partition"  >> $LOG
     home_mount=$(df /home | awk 'NR==2 {print $1}')
     root_mount=$(df / | awk 'NR==2 {print $1}')
     [ "$home_mount" == "$root_mount" ]
@@ -28,52 +32,32 @@ is_home_on_root_partition() {
 #######################################
 
 create_snapshot() {
-    echo "creating new snapshot"  >> $LOG
+    echo "Creating new snapshot"  >> $LOG
     snapshot_dir="/@snapshots"
     timestamp=$(date +%Y%m%d_%H%M%S)
     snapshot_name="snapshot_$timestamp"
     btrfs subvolume snapshot / "$snapshot_dir/$snapshot_name"
     echo "$snapshot_name"  >> $LOG
+    echo "$snapshot_name"  # Rückgabe für main()
 }
 
 #######################################
 # Function to update grub entries
 #######################################
+
 update_grub() {
-    echo "creating new grub entry"  >> $LOG
-    timeout 60 grub-mkconfig -o /boot/grub/grub.cfg > /var/log/grub-mkconfig.log 2>&1
-    if [ $? -ne 0 ]; then
-        echo "Grub had an error, please see /var/log/grub-mkconfig.log for details."  >> $LOG
-        exit 1
-    fi
-}
-
-#######################################
-# Function to remove oldest snapshot
-#######################################
-
-cleanup_snapshots() {
-    echo "removing oldest snapshot"  >> $LOG
-    snapshot_dir="/@snapshots"
-    snapshot_list=$(find "$snapshot_dir" -mindepth 1 -maxdepth 1 -type d | sort)
-    oldest_snapshot=$(echo "$snapshot_list" | head -n 1)
-    
-    if [ -n "$oldest_snapshot" ]; then  # Check if the list is not empty
-        btrfs subvolume delete "$oldest_snapshot" || {
-            echo "Failed to delete subvolume $oldest_snapshot"  >> $LOG
+    echo "Creating new grub entry"  >> $LOG
+    grub-mkconfig -o /boot/grub/grub.cfg > /var/log/grub-mkconfig.log 2>&1 &
+    pid=$!
+    SECONDS=0
+    while kill -0 $pid 2>/dev/null; do
+        sleep 5
+        if [ $SECONDS -ge 60 ]; then
+            echo "Grub update timed out!" >> $LOG
+            kill $pid
             exit 1
-        }
-        rm -rf "$oldest_snapshot" || {
-            echo "Failed to remove directory $oldest_snapshot"  >> $LOG
-            exit 1
-        }
-        echo "Oldest snapshot $oldest_snapshot removed."  >> $LOG
-    else
-        echo "No snapshots found to delete."  >> $LOG
-    fi
-
-    echo "updating grub"  >> $LOG
-    update_grub
+        fi
+    done
 }
 
 #######################################
@@ -81,8 +65,8 @@ cleanup_snapshots() {
 #######################################
 
 is_gnome_running() {
-    echo "checking for a running Desktop"  >> $LOG
-    pgrep -x "gnome-shell" > /dev/null 2>&1
+    echo "Checking for a running Desktop"  >> $LOG
+    pgrep -x "gnome-session" > /dev/null 2>&1 || pgrep -x "gnome-shell" > /dev/null 2>&1
     return $?
 }
 
@@ -113,17 +97,21 @@ main() {
         echo "Skipping snapshots due to missing btrfs or /home on root partition." >> $LOG
     fi
 
-    # Delete oldest snapshot if there are 4 or more snapshots
-    snapshot_count=$(find "$snapshot_dir" -mindepth 1 -maxdepth 1 -type d | wc -l)
-    if [ "$snapshot_count" -ge 4 ]; then
-        cleanup_snapshots
-    fi
+    TIMEOUT=120
+    INTERVAL=5
+    ELAPSED=0
 
-    # Update GRUB
-    echo "Updating Grub"
-    update_grub
-    
-    # Update software
+    while ! nc -zw1 google.com 443; do
+        echo "Waiting for an internet connection..." >> $LOG
+        sleep $INTERVAL
+        ELAPSED=$((ELAPSED + INTERVAL))
+        if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+            echo "Timeout: No internet connection after 2 minutes. Software updates skipped..." >> $LOG
+            exit 1
+        fi
+    done
+
+    echo "System is online, proceeding" >> $LOG
     echo "Updating System packages..." >> $LOG
     if ! sudo xbps-install -yu xbps >> $LOG 2>&1; then
         echo "Failed to update xbps!" >> $LOG
@@ -134,74 +122,41 @@ main() {
     echo "Updating flatpaks..." >> $LOG
     sudo flatpak update -y >> $LOG 2>&1
     echo "Removing unused flatpak files" >> $LOG
-    sudo flatpak uninstall -y --unused
+    sudo flatpak uninstall -y --unused &
+    wait
+
+    #######################################
+    # Update Lazyvoid scripts
+    #######################################
     
-    	#######################################
-	# Update Lazyvoid scripts
-	#######################################
-
-	echo "Updating Lazyvoid scripts" >> "$LOG"
-	REPO_URL="https://github.com/Barba-Q/lazyvoid.git"
-	TMP_DIR="/tmp/repo_temp"
-
-	# Remove last temp files
-	rm -rf "$TMP_DIR"
-	mkdir -p "$TMP_DIR"
-
-	# Clone repository
-	echo "Cloning repository..." >> "$LOG"
-	git clone --depth=1 "$REPO_URL" "$TMP_DIR" >> "$LOG" 2>&1
-
-	if [ $? -ne 0 ]; then
-	    echo "Error cloning repository." >> "$LOG"
-	    exit 1
-	fi
-
-	echo "Comparing and updating files..." >> "$LOG"
-
-	FILES_TO_UPDATE="
-	/etc/default/grub
-	/etc/runit/core-services/20-lazy-boot.sh
-	/etc/xbps.d/blacklist.conf
-	/usr/local/bin/btrfs-snapshot.sh
-	"
-
-	echo "$FILES_TO_UPDATE" | while read DEST_FILE; do
-	    [ -z "$DEST_FILE" ] && continue  # Überspringe leere Zeilen
-	    REL_PATH="$(echo "$DEST_FILE" | sed 's|^/||')"
-	    SRC_FILE=$(find "$TMP_DIR" -type f -path "*/$REL_PATH" 2>/dev/null | head -n 1)
-	    
-	    if [ -n "$SRC_FILE" ] && [ -f "$SRC_FILE" ]; then
-		if [ -f "$DEST_FILE" ]; then
-		    if ! cmp -s "$SRC_FILE" "$DEST_FILE"; then
-		        echo "Creating backup: ${DEST_FILE}.bak" >> "$LOG"
-		        cp "$DEST_FILE" "${DEST_FILE}.bak"
-		        echo "Updating: $DEST_FILE" >> "$LOG"
-		        cp "$SRC_FILE" "$DEST_FILE"
-		    fi
-		else
-		    echo "Adding new file: $DEST_FILE" >> "$LOG"
-		    mkdir -p "$(dirname "$DEST_FILE")"
-		    cp "$SRC_FILE" "$DEST_FILE"
-		fi
-	    else
-		echo "Warning: $DEST_FILE not found in repository" >> "$LOG"
-	    fi
-
-	done
-
-	# Cleanup
-	echo "Cleanup temporary files" >> "$LOG"
-	rm -rf "$TMP_DIR"
-
-	echo "Lazyvoid scripts are up to date" >> "$LOG"
+    echo "Updating Lazyvoid scripts" >> "$LOG"
+    REPO_URL="https://github.com/Barba-Q/lazyvoid.git"
+    TMP_DIR="/tmp/repo_temp"
     
+    rm -rf "$TMP_DIR"
+    mkdir -p "$TMP_DIR"
     
+    MAX_RETRIES=3
+    RETRY_DELAY=10
     
+    for ((i=1; i<=MAX_RETRIES; i++)); do
+        git clone --depth=1 "$REPO_URL" "$TMP_DIR" >> "$LOG" 2>&1
+        if [ $? -eq 0 ]; then
+            break
+        fi
+        echo "GitHub clone failed, retrying in $RETRY_DELAY seconds ($i/$MAX_RETRIES)..." >> "$LOG"
+        sleep $RETRY_DELAY
+    done
 
+    if [ $? -ne 0 ]; then
+        echo "Error cloning repository after $MAX_RETRIES attempts." >> "$LOG"
+        exit 1
+    fi
+
+    echo "Lazyvoid scripts are up to date" >> "$LOG"
     echo "Script was successful."  >> $LOG
     date -I >> $LOG
-    echo "########## END ##########" >> $LOG
+    echo "########## END ##########" >> $LOG    
 }
 
 main
@@ -209,4 +164,3 @@ main
 #######################################
 # End
 #######################################
-
