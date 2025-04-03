@@ -2,6 +2,8 @@
 LOG=/var/log/lazy-boot.log
 # set -x  # Uncomment for debugging
 
+# Version 20250403
+
 #######################################
 # Removing old kernels
 #######################################
