@@ -139,7 +139,7 @@ main() {
     MAX_RETRIES=3
     RETRY_DELAY=10
     
-    for ((i=1; i<=MAX_RETRIES; i++)); do
+    for i in $(seq 1 $MAX_RETRIES); do
         git clone --depth=1 "$REPO_URL" "$TMP_DIR" >> "$LOG" 2>&1
         if [ $? -eq 0 ]; then
             break
