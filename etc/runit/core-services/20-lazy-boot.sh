@@ -1,5 +1,6 @@
 #!/bin/sh
 LOG=/var/log/lazy-boot.log
+# set -x  # Uncomment for debugging
 
 #######################################
 # Removing old kernels
