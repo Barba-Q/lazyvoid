@@ -1,6 +1,6 @@
 #!/bin/bash
 LOG=/var/log/lazy-boot.log
-set -x  # Debugging
+# set -x  # Uncomment for debugging
 
 #######################################
 # Checking for btrfs filesystem
