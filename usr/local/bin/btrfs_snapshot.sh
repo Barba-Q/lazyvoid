@@ -157,8 +157,8 @@ main() {
 
 		echo "$FILES_TO_UPDATE" | while read DEST_FILE; do
 		    [ -z "$DEST_FILE" ] && continue
-		    REL_PATH="$(echo "$DEST_FILE" | sed 's|^/||')"
-		    SRC_FILE=$(find "$TMP_DIR" -type f -path "*/$REL_PATH" 2>/dev/null | head -n 1)
+		    	BASENAME="$(basename "$DEST_FILE")"
+			SRC_FILE=$(find "$TMP_DIR" -type f -name "$BASENAME" 2>/dev/null | head -n 1)
 		    
 		    if [ -n "$SRC_FILE" ] && [ -f "$SRC_FILE" ]; then
 			if [ -f "$DEST_FILE" ]; then
