@@ -1,3 +1,5 @@
+#Version 20250404
+
 #!/bin/sh
 LOG=/var/log/lazy-boot.log
 
