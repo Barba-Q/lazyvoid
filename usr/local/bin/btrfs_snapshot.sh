@@ -1,3 +1,5 @@
+#Version 20250404
+
 #!/bin/bash
 LOG=/var/log/lazy-boot.log
 # set -x  # Uncomment for debugging
