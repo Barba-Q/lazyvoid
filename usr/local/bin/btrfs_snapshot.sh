@@ -146,7 +146,7 @@ main() {
 
     echo "Comparing and updating files..." >> "$LOG"
 
-    FILES_TO_UPDATE="/etc/default/grub /etc/runit/core-services/20-lazy-boot.sh /etc/xbps.d/blacklist.conf /usr/local/bin/btrfs-snapshot.sh"
+    FILES_TO_UPDATE="/etc/default/grub /etc/runit/core-services/20-lazy-boot.sh /etc/xbps.d/blacklist.conf /usr/local/bin/btrfs_snapshot.sh"
 
     for DEST_FILE in $FILES_TO_UPDATE; do
         BASENAME=`basename "$DEST_FILE"`
