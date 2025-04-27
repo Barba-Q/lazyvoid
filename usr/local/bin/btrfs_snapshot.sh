@@ -40,6 +40,26 @@ create_snapshot() {
     btrfs subvolume snapshot / "$snapshot_dir/$snapshot_name"
     echo "$snapshot_name"  >> "$LOG"
     echo "$snapshot_name"
+    cleanup_snapshots
+}
+
+#######################################
+# Function to clean up old snapshots
+#######################################
+
+cleanup_snapshots() {
+    echo "Checking and cleaning old snapshots..." >> "$LOG"
+    snapshot_dir="/@snapshots"
+    snapshots=$(ls -1t "$snapshot_dir" | grep '^snapshot_' | tail -n +4)
+
+    for snapshot in $snapshots; do
+        echo "Deleting old snapshot: $snapshot" >> "$LOG"
+        if sudo btrfs subvolume delete "$snapshot_dir/$snapshot" >> "$LOG" 2>&1; then
+            rm -rf "$snapshot_dir/$snapshot"
+        else
+            echo "Failed to delete snapshot: $snapshot" >> "$LOG"
+        fi
+    done
 }
 
 #######################################
