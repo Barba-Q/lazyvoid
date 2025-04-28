@@ -53,11 +53,5 @@ echo "Initial boot complete, creating snapshot & update" >> "$LOG"
 sudo sh /usr/local/bin/btrfs_snapshot.sh >> "$LOG" 2>&1 &
 date -I >> "$LOG"
 
-echo "Setting CPU to performance mode" >> "$LOG"
-
-#installation is temporary and will be removed as soon as everything is rolled out
-sudo xbps-install -y cpupower
-
-sudo cpupower frequency-set -g performance  >> "$LOG" 2>&1
 
 echo "Lazy-boot process completed" >> "$LOG"
