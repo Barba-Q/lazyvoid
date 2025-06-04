@@ -155,7 +155,7 @@ main() {
     # Force reconfigure (thanks nidia)
     if [ "$OLD_KERNEL" != "$NEW_KERNEL" ]; then
         echo "Newer Kernelversion installed: $OLD_KERNEL → $NEW_KERNEL"
-        sudo xbps-reconfigure -f linux
+        sudo xbps-reconfigure -f nvidia
     fi
 
     # Force reconfigure (thanks nvidia)
