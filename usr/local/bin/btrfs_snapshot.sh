@@ -130,15 +130,44 @@ main() {
             exit 1
         fi
     done
-
+    #######################################
+    # Update Void
+    #######################################
+    
     echo "System is online, proceeding" >> "$LOG"
     echo "Updating System packages..." >> "$LOG"
+    
+    # Check current Nvidia and Kernel version
+    OLD_KERNEL=$(xbps-query -R -p pkgver linux)
+    OLD_NVIDIA=$(xbps-query -R -p pkgver nvidia)
+
+    # System updates
     if ! sudo xbps-install -yu xbps >> "$LOG" 2>&1; then
         echo "Failed to update xbps!" >> "$LOG"
     fi
     if ! sudo xbps-install -Syu >> "$LOG" 2>&1; then
         echo "Failed to update system!" >> "$LOG"
     fi
+    # Check for newer Nvidia or Kernel versions
+    NEW_KERNEL=$(xbps-query -R -p pkgver linux)
+    NEW_NVIDIA=$(xbps-query -R -p pkgver nvidia)
+
+    # Force reconfigure (thanks nidia)
+    if [ "$OLD_KERNEL" != "$NEW_KERNEL" ]; then
+        echo "Newer Kernelversion installed: $OLD_KERNEL → $NEW_KERNEL"
+        sudo xbps-reconfigure -f linux
+    fi
+
+    # Force reconfigure (thanks nvidia)
+    if [ "$OLD_NVIDIA" != "$NEW_NVIDIA" ]; then
+        echo "Newer Nvidia driver installed: $OLD_NVIDIA → $NEW_NVIDIA"
+        sudo xbps-reconfigure -f nvidia
+    fi
+
+    #######################################
+    # Update Flatpaks
+    #######################################
+
     echo "Updating flatpaks..." >> "$LOG"
     sudo flatpak update -y >> "$LOG" 2>&1
     echo "Removing unused flatpak files" >> "$LOG"
