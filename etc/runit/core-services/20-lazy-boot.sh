@@ -1,4 +1,8 @@
-# Version 20250706
+# Version 20250822
+
+################################################
+# This script will be executed on every boot
+################################################
 
 #!/bin/sh
 LOG=/var/log/lazy-boot.log
@@ -47,7 +51,7 @@ sudo echo 10 | sudo tee /proc/sys/vm/swappiness
 echo "Cleanup complete, proceeding" >> "$LOG"
 
 #######################################
-# Link to update and snapshot script
+# Link to update- and snapshot script
 #######################################
 
 echo "Initial boot complete, creating snapshot & update" >> "$LOG"
