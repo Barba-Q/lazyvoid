@@ -1,4 +1,8 @@
-#Version 20250404
+#Version 20250822
+
+##############################################################################
+# This script will create snapshots, update system packages and flatpaks
+##############################################################################
 
 #!/bin/sh
 LOG=/var/log/lazy-boot.log
@@ -131,7 +135,7 @@ main() {
         fi
     done
     #######################################
-    # Update Void
+    # Update Void packages
     #######################################
     
     echo "System is online, proceeding" >> "$LOG"
@@ -165,7 +169,7 @@ main() {
     fi
 
     #######################################
-    # Update Flatpaks
+    # Update and cleanup Flatpaks
     #######################################
 
     echo "Updating flatpaks..." >> "$LOG"
@@ -175,7 +179,7 @@ main() {
     wait
 
     #######################################
-    # Update Lazyvoid scripts
+    # Update Lazyvoid scripts from github repo
     #######################################
 
     echo "Updating Lazyvoid scripts" >> "$LOG"
