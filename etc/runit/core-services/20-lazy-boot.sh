@@ -9,6 +9,13 @@ LOG=/var/log/lazy-boot.log
 # set -x  # Uncomment for debugging
 
 #######################################
+# unimmute /var/log
+# This only exists due to a rare bug in recent kernel versions where /var/log was set immutable and causes hard freezes
+# 
+#######################################
+sudo chattr -i /var/log
+
+#######################################
 # Removing old kernels
 #######################################
 
