@@ -54,8 +54,10 @@ fi
 
 echo "Setting IP range" >> "$LOG"
 sudo sysctl -w net.ipv4.ping_group_range="0 2147483647" >> "$LOG" 2>&1
+echo "Applying performance tweaks" >> "$LOG"
 sudo echo 10 | sudo tee /proc/sys/vm/swappiness 
-echo "Cleanup complete, proceeding" >> "$LOG"
+sudo cpupower frequency-set -g performance
+echo "Proceeding" >> "$LOG"
 
 #######################################
 # Link to update- and snapshot script
