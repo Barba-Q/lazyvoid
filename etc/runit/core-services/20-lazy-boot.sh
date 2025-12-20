@@ -56,6 +56,7 @@ echo "Setting IP range" >> "$LOG"
 sudo sysctl -w net.ipv4.ping_group_range="0 2147483647" >> "$LOG" 2>&1
 echo "Applying performance tweaks" >> "$LOG"
 sudo echo 10 | sudo tee /proc/sys/vm/swappiness 
+sudo sysctl -w vm.max_map_count=16777216
 sudo cpupower frequency-set -g performance
 echo "Proceeding" >> "$LOG"
 
