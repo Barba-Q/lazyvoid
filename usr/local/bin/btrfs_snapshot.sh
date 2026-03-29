@@ -1,10 +1,11 @@
-#Version 20250822
+#!/bin/sh
+
+#Version 20260329
 
 ##############################################################################
 # This script will create snapshots, update system packages and flatpaks
 ##############################################################################
 
-#!/bin/sh
 LOG=/var/log/lazy-boot.log
 
 mkdir -p /var/log
@@ -140,32 +141,13 @@ main() {
     
     echo "System is online, proceeding" >> "$LOG"
     echo "Updating System packages..." >> "$LOG"
-    
-    # Check current Nvidia and Kernel version
-    OLD_KERNEL=$(xbps-query -R -p pkgver linux)
-    OLD_NVIDIA=$(xbps-query -R -p pkgver nvidia)
 
-    # System updates
+    # Prepare next System updates
     if ! sudo xbps-install -yu xbps >> "$LOG" 2>&1; then
         echo "Failed to update xbps!" >> "$LOG"
     fi
-    if ! sudo xbps-install -Syu >> "$LOG" 2>&1; then
-        echo "Failed to update system!" >> "$LOG"
-    fi
-    # Check for newer Nvidia or Kernel versions
-    NEW_KERNEL=$(xbps-query -R -p pkgver linux)
-    NEW_NVIDIA=$(xbps-query -R -p pkgver nvidia)
-
-    # Force reconfigure (thanks nidia)
-    if [ "$OLD_KERNEL" != "$NEW_KERNEL" ]; then
-        echo "Newer Kernelversion installed: $OLD_KERNEL → $NEW_KERNEL"
-        sudo xbps-reconfigure -f nvidia
-    fi
-
-    # Force reconfigure (thanks nvidia)
-    if [ "$OLD_NVIDIA" != "$NEW_NVIDIA" ]; then
-        echo "Newer Nvidia driver installed: $OLD_NVIDIA → $NEW_NVIDIA"
-        sudo xbps-reconfigure -f nvidia
+    if ! sudo xbps-install -SyuD >> "$LOG" 2>&1; then
+        echo "Failed to download system updates!" >> "$LOG"
     fi
 
     #######################################
