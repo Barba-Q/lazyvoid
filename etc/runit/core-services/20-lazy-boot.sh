@@ -20,7 +20,7 @@ sudo chattr -i /var/log
 # System Update
 ################################################
 
-if [ -n "$(xbps-query -u)" ]; then
+if [ -n "$(xbps-install -un)" ]; then
     echo "=========================================================="
     echo " Installing prepared updates..."
     echo " Please do not turn off this machine."
