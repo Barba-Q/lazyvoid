@@ -1,11 +1,12 @@
-# Version 20250822
+#!/bin/sh
+LOG=/var/log/lazy-boot.log
+
+# Version 20260329
 
 ################################################
 # This script will be executed on every boot
 ################################################
 
-#!/bin/sh
-LOG=/var/log/lazy-boot.log
 # set -x  # Uncomment for debugging
 
 #######################################
@@ -14,6 +15,20 @@ LOG=/var/log/lazy-boot.log
 # 
 #######################################
 sudo chattr -i /var/log
+
+################################################
+# System Update
+################################################
+
+if [ -n "$(xbps-query -u)" ]; then
+    echo "=========================================================="
+    echo " Installing prepared updates..."
+    echo " Please do not turn off this machine."
+    echo "=========================================================="
+    sudo xbps-install -uqy
+    echo " All done, proceeding..."
+    sleep 1
+fi
 
 #######################################
 # Removing old kernels
