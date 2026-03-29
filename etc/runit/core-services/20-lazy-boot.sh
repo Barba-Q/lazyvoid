@@ -80,7 +80,7 @@ echo "Proceeding" >> "$LOG"
 #######################################
 
 echo "Initial boot complete, creating snapshot & update" >> "$LOG"
-sudo sh /usr/local/bin/btrfs_snapshot.sh >> "$LOG" 2>&1 &
+sudo sh /usr/local/bin/lazyvoid_main.sh >> "$LOG" 2>&1 &
 date -I >> "$LOG"
 
 
