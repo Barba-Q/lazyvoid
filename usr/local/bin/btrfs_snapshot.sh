@@ -87,12 +87,14 @@ update_grub() {
 }
 
 #######################################
-# Function to check if GNOME started successfully
+# Function to check if a Desktop (Plasma or GNOME) started
 #######################################
-
-is_gnome_running() {
-    echo "Checking for a running Desktop"  >> "$LOG"
-    pgrep -x gnome-session >/dev/null 2>&1 || pgrep -x gnome-shell >/dev/null 2>&1
+is_desktop_running() {
+    echo "Checking for a running Plasma or GNOME Desktop"  >> "$LOG"
+    pgrep -x plasmashell >/dev/null 2>&1 || \
+    pgrep -x kwin_wayland >/dev/null 2>&1 || \
+    pgrep -x gnome-session >/dev/null 2>&1 || \
+    pgrep -x gnome-shell >/dev/null 2>&1
     return $?
 }
 
@@ -100,15 +102,14 @@ is_gnome_running() {
 # Main script
 #######################################
 
-main() {
-    echo "Waiting for GNOME session..." >> "$LOG"
+echo "Waiting for Desktop session..." >> "$LOG"
     timeout=300
     elapsed=0
-    while ! is_gnome_running; do
+    while ! is_desktop_running; do
         sleep 5
-        elapsed=`expr $elapsed + 5`
+        elapsed=$((elapsed + 5))
         if [ "$elapsed" -ge "$timeout" ]; then
-            echo "GNOME did not start, exiting script." >> "$LOG"
+            echo "Desktop did not start, exiting script." >> "$LOG"
             exit 1
         fi
     done
