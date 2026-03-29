@@ -5,7 +5,7 @@ GRUB_DEFAULT=0
 #GRUB_HIDDEN_TIMEOUT=0
 #GRUB_HIDDEN_TIMEOUT_QUIET=false
 GRUB_TIMEOUT=5
-GRUB_DISTRIBUTOR="Lazy-Void"
+GRUB_DISTRIBUTOR="Lazyvoid"
 GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 mitigations=off nowatchdog preempt=full"
 # Uncomment to use basic console
 GRUB_TERMINAL_INPUT=console
