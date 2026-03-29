@@ -25,7 +25,7 @@ if [ -n "$(xbps-query -u)" ]; then
     echo " Installing prepared updates..."
     echo " Please do not turn off this machine."
     echo "=========================================================="
-    sudo xbps-install -uqy
+    sudo xbps-install -uy
     echo " All done, proceeding..."
     sleep 1
 fi
