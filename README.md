@@ -12,14 +12,14 @@ It creates fully automated btrfs snapshots - as long as btrfs is utilized - righ
 
 ## How to get Lazyvoid
 
-### 💿 Option A: The Lazyvoid ISO
+### 💿 Option A: The Lazyvoid ISO (Recommended)
 If you want a fresh, out-of-the-box experience with KDE Plasma, Wayland, grab the latest bootable ISO, boot it, install it, done. It's set and forget.
 
-### 🛠️ Option B: The Universal installer
+### 🛠️ Option B: The Universal installer (BETA)
 If you're already running Void Linux and don't want to reinstall, use the Lazyvoid installer. 
 This script will inject the Lazyvoid automation into your existing Void setup. It detects your hardware, sets up the repos, and even offers to compile the latest open modules if you are running a modern Nvidia GPU.
 
-> ⚠️ **WARNING:** Running this script will swap your current kernel to the `linux-lts` package to guarantee long-term stability for the background updates. If you rely on absolute bleeding-edge mainline kernels for specific hardware, this might not be for you.
+> ⚠️ **WARNING:** Running this script on a live machine is in BETA but considered stable, it will swap your current kernel to the `linux-lts` package to guarantee long-term stability for the background updates. If you rely on absolute bleeding-edge mainline kernels for specific hardware or just don't want it, this is not for you.
 
 #### 💻 Installation Guide:
 
@@ -60,6 +60,11 @@ Lazyvoid embraces this reality and builds a massive safety net around it.
 Lazyvoid isn't just some weekend experiment. These core scripts have been continuously running, evolving, and actively monitored on multiple different hardware setups for about two years now.
 
 We've thrown everything at it – including booting up test machines that had been collecting dust offline for months, just to see if the background update mechanism survives the massive package backlog. It did. Over time, the scripts have been heavily refined, stripped of unnecessary bloat, and expanded with bulletproof features. What you download is a mature, battle-hardened setup that simply works and refuses to break. It's completely transparent and hackable if you want to.
+
+
+
+## Issues ?
+If you encounter any issue related to lazyvoid, please let us know: linux[at]knietief[dot]com or create a PR
 
 <br>
 
