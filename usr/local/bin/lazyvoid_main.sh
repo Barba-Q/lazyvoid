@@ -59,7 +59,7 @@ cleanup_snapshots() {
 
     for snapshot in $snapshots; do
         echo "Deleting old snapshot: $snapshot" >> "$LOG"
-        if sudo btrfs subvolume delete "$snapshot_dir/$snapshot" >> "$LOG" 2>&1; then
+        if btrfs subvolume delete "$snapshot_dir/$snapshot" >> "$LOG" 2>&1; then
             rm -rf "$snapshot_dir/$snapshot"
         else
             echo "Failed to delete snapshot: $snapshot" >> "$LOG"
@@ -87,14 +87,29 @@ update_grub() {
 }
 
 #######################################
-# Function to check if a Desktop (Plasma or GNOME) started
+# Function to check if ANY graphical session started
 #######################################
 is_desktop_running() {
-    echo "Checking for a running Plasma or GNOME Desktop"  >> "$LOG"
+    echo "Checking for a running graphical session..."  >> "$LOG"
+    
+    # KDE Plasma (Wayland & X11)
     pgrep -x plasmashell >/dev/null 2>&1 || \
     pgrep -x kwin_wayland >/dev/null 2>&1 || \
+    pgrep -x kwin_x11 >/dev/null 2>&1 || \
+    # GNOME
     pgrep -x gnome-session >/dev/null 2>&1 || \
-    pgrep -x gnome-shell >/dev/null 2>&1
+    pgrep -x gnome-shell >/dev/null 2>&1 || \
+    # XFCE, MATE, Cinnamon, LXQt
+    pgrep -x xfce4-session >/dev/null 2>&1 || \
+    pgrep -x mate-session >/dev/null 2>&1 || \
+    pgrep -x cinnamon-session >/dev/null 2>&1 || \
+    pgrep -x lxqt-session >/dev/null 2>&1 || \
+    # Tiling Window Manager (Sway, Hyprland, i3) & Openbox
+    pgrep -x sway >/dev/null 2>&1 || \
+    pgrep -i -x hyprland >/dev/null 2>&1 || \
+    pgrep -x i3 >/dev/null 2>&1 || \
+    pgrep -x openbox >/dev/null 2>&1
+    
     return $?
 }
 
