@@ -1,0 +1,4 @@
+#!/bin/sh
+exec 2>&1
+sh /usr/local/bin/lazyvoid_main.sh
+pause
