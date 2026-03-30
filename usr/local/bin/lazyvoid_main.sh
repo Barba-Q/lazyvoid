@@ -182,7 +182,7 @@ echo "Waiting for Desktop session..." >> "$LOG"
 
     echo "Comparing and updating files..." >> "$LOG"
 
-    FILES_TO_UPDATE="/etc/default/grub /etc/runit/core-services/20-lazy-boot.sh /etc/xbps.d/blacklist.conf /usr/local/bin/lazyvoid_main.sh.sh"
+    FILES_TO_UPDATE="/etc/default/grub /etc/runit/core-services/20-lazy-boot.sh /etc/xbps.d/blacklist.conf /usr/local/bin/lazyvoid_main.sh"
 
     for DEST_FILE in $FILES_TO_UPDATE; do
         BASENAME=`basename "$DEST_FILE"`
