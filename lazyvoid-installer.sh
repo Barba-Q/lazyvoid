@@ -125,7 +125,7 @@ do_setup() {
 
     # Install additional Lazyvoid packages
     printf "\n\nInstalling Lazyvoid dependencies...\n"
-    sudo xbps-install -y unrar grub-btrfs cpupower libgamemode-32bit git curl flatpak wget netcat-openbsd pciutils diffutils btrfs-progs
+    sudo xbps-install -y ark unzip p7zip p7zip unrar unrar grub-btrfs cpupower libgamemode-32bit git curl flatpak wget netcat-openbsd pciutils diffutils btrfs-progs
 
     # Fetch Lazyvoid Scripts from GitHub
     printf "\n\nFetching Lazyvoid Automation Scripts from GitHub...\n"
@@ -212,14 +212,13 @@ do_setup() {
     # HYBRID CLEANUP (Für ISO-Firstboot)
     # ==========================================
     printf "\n\nCleaning up first-boot files (if present)...\n"
-    sudo rm -f /etc/runit/core-services/10-live-bootscript.sh
 
-    if [ -f /etc/lazy/30-lazy_firstboot.sh ]; then
-        sudo mv /etc/lazy/30-lazy_firstboot.sh /etc/lazy/30-lazy_firstboot_done.sh
+    if [ -f /etc/lazy/lazyvoid-installer.sh ]; then
+        sudo mv /etc/lazy/lazyvoid-installer.sh /etc/lazy/lazyvoid-installer_done.sh
         echo "Disabled firstboot script."
     fi
-    if [ -f /etc/xdg/autostart/30-lazy_firstboot.desktop ]; then
-        sudo mv /etc/xdg/autostart/30-lazy_firstboot.desktop /etc/lazy/30-lazy_firstboot.desktop.done
+    if [ -f /etc/xdg/autostart/lazyvoid-installer.desktop ]; then
+        sudo mv /etc/xdg/autostart/lazyvoid-installer.desktop /etc/lazy/lazyvoid-installer.desktop.done
         echo "Disabled autostart entry."
     fi
     sleep 2
