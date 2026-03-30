@@ -134,8 +134,11 @@ do_setup() {
     if git clone --depth=1 "https://github.com/Barba-Q/lazyvoid.git" "$TMP_DIR"; then
         sudo cp "$TMP_DIR/etc/runit/core-services/20-lazy-boot.sh" "/etc/runit/core-services/20-lazy-boot.sh"
         sudo cp "$TMP_DIR/usr/local/bin/lazyvoid_main.sh" "/usr/local/bin/lazyvoid_main.sh"
+        sudo cp "$TMP_DIR/etc/sv/lazyvoid/run"
         sudo chmod +x /etc/runit/core-services/20-lazy-boot.sh
         sudo chmod +x /usr/local/bin/lazyvoid_main.sh
+        sudo chmod +x /etc/sv/lazyvoid/run
+        sudo ln -s /etc/sv/lazyvoid /var/service/
         echo "Lazyvoid scripts successfully injected."
     else
         echo "ERROR: Could not download Lazyvoid scripts. Check your internet connection."
