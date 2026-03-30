@@ -1,7 +1,7 @@
 #!/bin/sh
 LOG=/var/log/lazy-boot.log
 
-# Version 20260329
+# Version 20260330
 
 ################################################
 # This script will be executed on every boot
@@ -12,9 +12,8 @@ LOG=/var/log/lazy-boot.log
 #######################################
 # unimmute /var/log
 # This only exists due to a rare bug in recent kernel versions where /var/log was set immutable and causes hard freezes
-# 
 #######################################
-sudo chattr -i /var/log
+chattr -i /var/log
 
 ################################################
 # System Update
@@ -25,7 +24,7 @@ if [ -n "$(xbps-install -un)" ]; then
     echo " Installing prepared updates..."
     echo " Please do not turn off this machine."
     echo "=========================================================="
-    sudo xbps-install -uy
+    xbps-install -uy
     echo " All done, proceeding..."
     sleep 1
 fi
@@ -41,7 +40,7 @@ num_entries=$(echo "$vkpurge_output" | wc -l)
 if [ "$num_entries" -gt 2 ]; then
     while [ "$num_entries" -gt 2 ]; do
         first_entry=$(echo "$vkpurge_output" | head -n 1 | awk '{print $1}')
-        sudo vkpurge rm "$first_entry"
+        vkpurge rm "$first_entry"
         echo "Oldest Kernel '$first_entry' removed with vkpurge rm." >> "$LOG"
         vkpurge_output=$(vkpurge list 2>/dev/null || echo "")
         num_entries=$(echo "$vkpurge_output" | wc -l)
@@ -55,8 +54,8 @@ fi
 #######################################
 
 echo "Removing package cache and orphaned packages" >> "$LOG"
-sudo xbps-remove -oy >> "$LOG" 2>&1
-sudo xbps-remove -Oy >> "$LOG" 2>&1
+xbps-remove -oy >> "$LOG" 2>&1
+xbps-remove -Oy >> "$LOG" 2>&1
 if [ $? -ne 0 ]; then
     echo "Removing orphaned packages failed" >> "$LOG"
 else 
@@ -68,11 +67,11 @@ fi
 #######################################
 
 echo "Setting IP range" >> "$LOG"
-sudo sysctl -w net.ipv4.ping_group_range="0 2147483647" >> "$LOG" 2>&1
+sysctl -w net.ipv4.ping_group_range="0 2147483647" >> "$LOG" 2>&1
 echo "Applying performance tweaks" >> "$LOG"
-sudo echo 10 | sudo tee /proc/sys/vm/swappiness 
-sudo sysctl -w vm.max_map_count=16777216
-sudo cpupower frequency-set -g performance
+echo 10 > /proc/sys/vm/swappiness 
+sysctl -w vm.max_map_count=16777216
+cpupower frequency-set -g performance
 echo "Proceeding" >> "$LOG"
 
 #######################################
@@ -80,8 +79,7 @@ echo "Proceeding" >> "$LOG"
 #######################################
 
 echo "Initial boot complete, creating snapshot & update" >> "$LOG"
-sudo sh /usr/local/bin/lazyvoid_main.sh >> "$LOG" 2>&1 &
+sh /usr/local/bin/lazyvoid_main.sh >> "$LOG" 2>&1 &
 date -I >> "$LOG"
-
 
 echo "Lazy-boot process completed" >> "$LOG"
