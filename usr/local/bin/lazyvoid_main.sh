@@ -1,9 +1,10 @@
 #!/bin/sh
 
-#Version 20260329
+#Version 20260330
 
 ##############################################################################
-# This script will create snapshots, update system packages and flatpaks
+# Lazyvoid Main Background Script (Stage 2)
+# Creates snapshots, downloads system packages for next boot, updates flatpaks
 ##############################################################################
 
 LOG=/var/log/lazy-boot.log
@@ -15,7 +16,6 @@ chmod 644 "$LOG"
 #######################################
 # Checking for btrfs filesystem
 #######################################
-
 is_btrfs() {
     echo "Checking for btrfs"  >> "$LOG"
     mount | grep "on / type btrfs" >/dev/null 2>&1
@@ -23,26 +23,14 @@ is_btrfs() {
 }
 
 #######################################
-# Checking for separate /home partition
-#######################################
-
-is_home_on_root_partition() {
-    echo "Checking for separate home partition"  >> "$LOG"
-    home_mount=`df /home | awk 'NR==2 {print $1}'`
-    root_mount=`df / | awk 'NR==2 {print $1}'`
-    [ "$home_mount" = "$root_mount" ]
-}
-
-#######################################
 # Function to create snapshot
 #######################################
-
 create_snapshot() {
     echo "Creating new snapshot"  >> "$LOG"
     snapshot_dir="/@snapshots"
-    timestamp=`date +%Y%m%d_%H%M%S`
+    timestamp=$(date +%Y%m%d_%H%M%S)
     snapshot_name="snapshot_$timestamp"
-    btrfs subvolume snapshot / "$snapshot_dir/$snapshot_name"
+    btrfs subvolume snapshot / "$snapshot_dir/$snapshot_name" >> "$LOG" 2>&1
     echo "$snapshot_name"  >> "$LOG"
     echo "$snapshot_name"
     cleanup_snapshots
@@ -51,7 +39,6 @@ create_snapshot() {
 #######################################
 # Function to clean up old snapshots
 #######################################
-
 cleanup_snapshots() {
     echo "Checking and cleaning old snapshots..." >> "$LOG"
     snapshot_dir="/@snapshots"
@@ -70,7 +57,6 @@ cleanup_snapshots() {
 #######################################
 # Function to update grub entries
 #######################################
-
 update_grub() {
     echo "Creating new grub entry"  >> "$LOG"
     grub-mkconfig -o /boot/grub/grub.cfg >/var/log/grub-mkconfig.log 2>&1 &
@@ -92,19 +78,15 @@ update_grub() {
 is_desktop_running() {
     echo "Checking for a running graphical session..."  >> "$LOG"
     
-    # KDE Plasma (Wayland & X11)
     pgrep -x plasmashell >/dev/null 2>&1 || \
     pgrep -x kwin_wayland >/dev/null 2>&1 || \
     pgrep -x kwin_x11 >/dev/null 2>&1 || \
-    # GNOME
     pgrep -x gnome-session >/dev/null 2>&1 || \
     pgrep -x gnome-shell >/dev/null 2>&1 || \
-    # XFCE, MATE, Cinnamon, LXQt
     pgrep -x xfce4-session >/dev/null 2>&1 || \
     pgrep -x mate-session >/dev/null 2>&1 || \
     pgrep -x cinnamon-session >/dev/null 2>&1 || \
     pgrep -x lxqt-session >/dev/null 2>&1 || \
-    # Tiling Window Manager (Sway, Hyprland, i3) & Openbox
     pgrep -x sway >/dev/null 2>&1 || \
     pgrep -i -x hyprland >/dev/null 2>&1 || \
     pgrep -x i3 >/dev/null 2>&1 || \
@@ -117,7 +99,10 @@ is_desktop_running() {
 # Main script
 #######################################
 main() {
-echo "Waiting for Desktop session..." >> "$LOG"
+    echo "########## START LAZYVOID MAIN SCRIPT ##########" >> "$LOG"
+    date -I >> "$LOG"
+
+    echo "Waiting for Desktop session..." >> "$LOG"
     timeout=300
     elapsed=0
     while ! is_desktop_running; do
@@ -129,13 +114,14 @@ echo "Waiting for Desktop session..." >> "$LOG"
         fi
     done
 
-    if is_btrfs && ! is_home_on_root_partition; then
+    if is_btrfs; then
         snapshot_dir="/@snapshots"
         mkdir -p "$snapshot_dir"
-        new_snapshot=`create_snapshot`
-        echo "Snapshot $new_snapshot created."
+        new_snapshot=$(create_snapshot)
+        echo "Snapshot $new_snapshot created." >> "$LOG"
+        update_grub
     else
-        echo "Skipping snapshots due to missing btrfs or /home on root partition." >> "$LOG"
+        echo "Skipping snapshots due to missing btrfs." >> "$LOG"
     fi
 
     TIMEOUT=120
@@ -145,41 +131,43 @@ echo "Waiting for Desktop session..." >> "$LOG"
     while ! nc -zw1 google.com 443; do
         echo "Waiting for an internet connection..." >> "$LOG"
         sleep "$INTERVAL"
-        ELAPSED=`expr $ELAPSED + $INTERVAL`
+        ELAPSED=$((ELAPSED + INTERVAL))
         if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
             echo "Timeout: No internet connection after 2 minutes. Software updates skipped..." >> "$LOG"
             exit 1
         fi
     done
-    #######################################
-    # Update Void packages
-    #######################################
-    
-    echo "System is online, proceeding" >> "$LOG"
-    echo "Updating System packages..." >> "$LOG"
 
-    # Prepare next System updates
-    if ! sudo xbps-install -yu xbps >> "$LOG" 2>&1; then
+    #######################################
+    # Download Void packages for next boot
+    #######################################
+    echo "System is online, proceeding" >> "$LOG"
+    echo "Preparing next System updates..." >> "$LOG"
+
+    if ! xbps-install -yu xbps >> "$LOG" 2>&1; then
         echo "Failed to update xbps!" >> "$LOG"
     fi
-    if ! sudo xbps-install -SyuD >> "$LOG" 2>&1; then
-        echo "Failed to download system updates!" >> "$LOG"
+    
+    # Hier wird das Flag gesetzt!
+    if xbps-install -SyuD >> "$LOG" 2>&1; then
+        echo "Updates downloaded successfully. Flagging for offline-install on next boot." >> "$LOG"
+        touch /var/tmp/lazy_update_pending
+    else
+        echo "Failed to download system updates or no updates available." >> "$LOG"
     fi
 
     #######################################
     # Update and cleanup Flatpaks
     #######################################
-
     echo "Updating flatpaks..." >> "$LOG"
-    sudo flatpak update -y >> "$LOG" 2>&1
+    flatpak update -y >> "$LOG" 2>&1
     echo "Removing unused flatpak files" >> "$LOG"
-    sudo flatpak uninstall -y --unused &
+    flatpak uninstall -y --unused &
     wait
 
     #######################################
     # Update Lazyvoid scripts from github repo
     #######################################
-
     echo "Updating Lazyvoid scripts" >> "$LOG"
     REPO_URL="https://github.com/Barba-Q/lazyvoid.git"
     TMP_DIR="/tmp/repo_temp"
@@ -196,12 +184,11 @@ echo "Waiting for Desktop session..." >> "$LOG"
     fi
 
     echo "Comparing and updating files..." >> "$LOG"
-
-    FILES_TO_UPDATE="/etc/default/grub /etc/runit/core-services/20-lazy-boot.sh /etc/xbps.d/blacklist.conf /usr/local/bin/lazyvoid_main.sh"
+    FILES_TO_UPDATE="/source/etc/default/grub /source/etc/runit/core-services/20-lazy-boot.sh /source/etc/sv/lazyvoid/run /source/usr/local/bin/lazyvoid_main.sh"
 
     for DEST_FILE in $FILES_TO_UPDATE; do
-        BASENAME=`basename "$DEST_FILE"`
-        SRC_FILE=`find "$TMP_DIR" -type f -name "$BASENAME" 2>/dev/null | head -n 1`
+        BASENAME=$(basename "$DEST_FILE")
+        SRC_FILE=$(find "$TMP_DIR" -type f -name "$BASENAME" 2>/dev/null | head -n 1)
 
         if [ -n "$SRC_FILE" ] && [ -f "$SRC_FILE" ]; then
             if [ -f "$DEST_FILE" ]; then
@@ -214,7 +201,7 @@ echo "Waiting for Desktop session..." >> "$LOG"
                 fi
             else
                 echo "Adding new file: $DEST_FILE" >> "$LOG"
-                mkdir -p "`dirname "$DEST_FILE"`"
+                mkdir -p "$(dirname "$DEST_FILE")"
                 cp "$SRC_FILE" "$DEST_FILE"
             fi
         else
@@ -227,8 +214,7 @@ echo "Waiting for Desktop session..." >> "$LOG"
 
     echo "Lazyvoid scripts are up to date" >> "$LOG"
     echo "Script was successful." >> "$LOG"
-    date -I >> "$LOG"
-    echo "########## END ##########" >> "$LOG"
+    echo "########## END MAIN SCRIPT ##########" >> "$LOG"
 }
 
 main
