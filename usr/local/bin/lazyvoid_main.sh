@@ -23,6 +23,16 @@ is_btrfs() {
 }
 
 #######################################
+# Checking for separate /home partition
+#######################################
+is_home_on_root_partition() {
+    echo "Checking for separate home partition"  >> "$LOG"
+    home_mount=$(df /home | awk 'NR==2 {print $1}')
+    root_mount=$(df / | awk 'NR==2 {print $1}')
+    [ "$home_mount" = "$root_mount" ]
+}
+
+#######################################
 # Function to create snapshot
 #######################################
 create_snapshot() {
@@ -114,14 +124,14 @@ main() {
         fi
     done
 
-    if is_btrfs; then
+    if is_btrfs && ! is_home_on_root_partition; then
         snapshot_dir="/@snapshots"
         mkdir -p "$snapshot_dir"
         new_snapshot=$(create_snapshot)
         echo "Snapshot $new_snapshot created." >> "$LOG"
         update_grub
     else
-        echo "Skipping snapshots due to missing btrfs." >> "$LOG"
+        echo "Skipping snapshots due to missing btrfs or /home on root partition." >> "$LOG"
     fi
 
     TIMEOUT=120
@@ -148,7 +158,6 @@ main() {
         echo "Failed to update xbps!" >> "$LOG"
     fi
     
-    # Hier wird das Flag gesetzt!
     if xbps-install -SyuD >> "$LOG" 2>&1; then
         echo "Updates downloaded successfully. Flagging for offline-install on next boot." >> "$LOG"
         touch /var/tmp/lazy_update_pending
