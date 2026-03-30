@@ -23,19 +23,12 @@ This script will inject the Lazyvoid automation into your existing Void setup. I
 
 #### 💻 Installation Guide:
 
-1. **Open your terminal.**
-2. **Clone this repository:**
-   ```bash
-   git clone --depth=1 [https://github.com/Barba-Q/lazyvoid.git](https://github.com/Barba-Q/lazyvoid.git)
-   ```
-3. **Navigate into the folder:**
-   ```bash
-   cd lazyvoid
-   ```
-4. **Run the installer** *(it will ask for your root password)*:
+1. **Download lazyvoid-installer.sh**
+2. **Run the installer** *(it will ask for your root password)*:
    ```bash
    sh lazyvoid-installer.sh --setup
    ```
+3. **Profit**
 
 The script will guide you through the process, install the necessary dependencies, fetch the background services, and reboot your machine once it is done.
 
