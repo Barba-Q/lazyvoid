@@ -10,12 +10,12 @@ It creates fully automated btrfs snapshots - as long as btrfs is utilized - righ
 
 ---
 
-## 🚀 How to get Lazyvoid
+## How to get Lazyvoid
 
 ### 💿 Option A: The Lazyvoid ISO
 If you want a fresh, out-of-the-box experience with KDE Plasma, Wayland, grab the latest bootable ISO, boot it, install it, done. It's set and forget.
 
-### 🛠️ Option B: The Universal Converter
+### 🛠️ Option B: The Universal installer
 If you're already running Void Linux and don't want to reinstall, use the Lazyvoid installer. 
 This script will inject the Lazyvoid automation into your existing Void setup. It detects your hardware, sets up the repos, and even offers to compile the latest open modules if you are running a modern Nvidia GPU.
 
