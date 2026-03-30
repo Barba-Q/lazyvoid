@@ -101,7 +101,7 @@ is_desktop_running() {
 #######################################
 # Main script
 #######################################
-
+main() {
 echo "Waiting for Desktop session..." >> "$LOG"
     timeout=300
     elapsed=0
