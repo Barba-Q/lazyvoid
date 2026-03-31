@@ -4,7 +4,7 @@
 
 ##############################################################################
 # Lazyvoid Main Background Script (Stage 2)
-# Creates snapshots, downloads system packages for next boot, updates flatpaks
+# Will be downloaded by firstboo / conversion, creates snapshots, downloads system packages for next boot, updates flatpaks
 ##############################################################################
 
 LOG=/var/log/lazy-boot.log
