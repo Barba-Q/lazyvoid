@@ -4,7 +4,7 @@ LOG=/var/log/lazy-boot.log
 # Version 20260330 - Clean Stage 1 Boot Script
 
 ################################################
-# This script will be executed on every boot (Stage 1)
+# This script will be downloaded on firstboot / conversion and executed on every boot (Stage 1)
 ################################################
 
 # set -x  # Uncomment for debugging
@@ -68,7 +68,7 @@ sysctl -w net.ipv4.ping_group_range="0 2147483647" >> "$LOG" 2>&1
 # Swappiness to 10 for better Desktop-Responsiveness
 echo 10 > /proc/sys/vm/swappiness 
 
-# Max Map Count for Steam/Proton/Star Citizen
+# Max Map Count for Steam/Proton/Star Citizen/etc
 sysctl -w vm.max_map_count=16777216 >> "$LOG" 2>&1
 
 # Set CPU Governor to Performance
@@ -77,4 +77,4 @@ if command -v cpupower >/dev/null 2>&1; then
 fi
 
 echo "Stage-1 Lazy-boot process completed" >> "$LOG"
-date -I >> "$LOG"#!/bin/sh
+date -I >> "$LOG"
