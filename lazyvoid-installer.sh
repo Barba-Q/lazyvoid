@@ -210,6 +210,19 @@ do_setup() {
                 sudo xbps-install -y nvidia
             fi
         fi
+
+        # Create prime-run Wrapper for ALL Nvidia users
+        printf "Creating prime-run wrapper for Optimus support...\n"
+        sudo tee /usr/local/bin/prime-run > /dev/null << 'EOF'
+#!/bin/sh
+export __NV_PRIME_RENDER_OFFLOAD=1
+export __NV_PRIME_RENDER_OFFLOAD_PROVIDER=NVIDIA-G0
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+export __VK_LAYER_NV_optimus=NVIDIA_only
+exec "$@"
+EOF
+        sudo chmod +x /usr/local/bin/prime-run
+
     else
         printf "No Nvidia hardware detected, moving on.\n\n"
         sleep 2
