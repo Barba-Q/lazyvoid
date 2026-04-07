@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version 20260330 - Lazyvoid Universal Installer / Firstboot
+# Version 20260407 - Lazyvoid Universal Installer / Firstboot
 
 log="/var/log/lazy_installer.log"
 LOCK_FILE="/tmp/lazy_installer.lock"
@@ -10,15 +10,33 @@ trap 'rm -f "$LOCK_FILE"' EXIT INT TERM QUIT
 # 1. INTERNAL FUNCTIONS
 # ==============================================================================
 
+wait_for_internet() {
+    while ! ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1; do
+        clear
+        printf "====================================================\n"
+        printf "   WARNING: NO INTERNET CONNECTION       \n"
+        printf "====================================================\n\n"
+        printf " This installer needs an online connection.\n\n"
+        printf " 1. Please provide a connection to the Internet.\n"
+        printf " 2. Hit ENTER to continue.\n\n"
+        printf "====================================================\n"
+        read -r _
+        printf "checking...\n"
+        sleep 1
+    done
+    printf "Connection found...\n\n"
+    sleep 2
+}
+
 install_nvidia_open_latest() {
     printf "\n--- STARTING ADVANCED NVIDIA OPEN MODULE INSTALLATION ---\n"
 
     # Install dependencies for building
     sudo xbps-install -y base-devel linux-lts-headers dkms libglvnd curl
 
-    # Scrape latest version number from Nvidia servers
+    # Scrape latest version number from Nvidia servers (with User-Agent fake)
     printf "Scraping Nvidia servers for latest driver version...\n"
-    LATEST_VERSION=$(curl -s https://download.nvidia.com/XFree86/Linux-x86_64/ | grep -oP 'href="\K[0-9]+\.[0-9]+(\.[0-9]+)?(?=/")' | sort -V | tail -n 1)
+    LATEST_VERSION=$(curl -s -A "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0" https://download.nvidia.com/XFree86/Linux-x86_64/ | grep -oP 'href="\K[0-9]+\.[0-9]+(\.[0-9]+)?(?=/")' | sort -V | tail -n 1)
 
     if [ -z "$LATEST_VERSION" ]; then
         printf "ERROR: Failed to fetch latest version from Nvidia! Falling back to Void repos...\n"
@@ -31,7 +49,7 @@ install_nvidia_open_latest() {
     INSTALLER_PATH="/var/tmp/NVIDIA-Linux-x86_64-${LATEST_VERSION}.run"
 
     printf "Downloading %s...\n" "$RUN_URL"
-    curl -# "$RUN_URL" -o "$INSTALLER_PATH"
+    curl -# -A "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0" "$RUN_URL" -o "$INSTALLER_PATH"
     chmod +x "$INSTALLER_PATH"
 
     # --- Applying the Tegra Dummy-Header Hack ---
@@ -63,7 +81,7 @@ install_nvidia_open_latest() {
     mkdir -p "$TEMP_EXTRACT_DIR"
 
     printf "Extracting installer...\n"
-    sh "$INSTALLER_PATH" -x --target "$TEMP_EXTRACT_DIR/extract" > /dev/null
+    sudo sh "$INSTALLER_PATH" -x --target "$TEMP_EXTRACT_DIR/extract" > /dev/null
     EXTRACTED_DIR=$(find "$TEMP_EXTRACT_DIR/extract" -maxdepth 1 -type d -name "NVIDIA-Linux-x86_64-*" | head -n 1)
 
     sudo mkdir -p "$DKMS_SRC_DIR"
@@ -123,25 +141,25 @@ do_setup() {
     sudo xbps-install -Syu
     sudo xbps-install -y linux-lts linux-lts-headers
 
-    # Install additional Lazyvoid packages
+    # Install additional Lazyvoid packages (cleaned up duplicates)
     printf "\n\nInstalling Lazyvoid dependencies...\n"
-    sudo xbps-install -y ark unzip p7zip p7zip unrar unrar grub-btrfs cpupower libgamemode-32bit git curl flatpak wget netcat-openbsd pciutils diffutils btrfs-progs
+    sudo xbps-install -y ark zip unzip p7zip unrar grub-btrfs cpupower libgamemode-32bit git curl flatpak wget netcat-openbsd pciutils diffutils btrfs-progs
 
-    # Fetch Lazyvoid Scripts from GitHub
+    # Fetch Lazyvoid Scripts from GitHub (Safe public clone)
     printf "\n\nFetching Lazyvoid Automation Scripts from GitHub...\n"
     TMP_DIR="/tmp/lazyvoid_repo"
     rm -rf "$TMP_DIR"
-    if git clone --depth=1 "https://github.com/Barba-Q/lazyvoid.git" "$TMP_DIR"; then
+    if GIT_TERMINAL_PROMPT=0 git clone --depth=1 "https://github.com/Barba-Q/lazyvoid.git" "$TMP_DIR"; then
         sudo cp "$TMP_DIR/etc/runit/core-services/20-lazy-boot.sh" "/etc/runit/core-services/20-lazy-boot.sh"
         sudo cp "$TMP_DIR/usr/local/bin/lazyvoid_main.sh" "/usr/local/bin/lazyvoid_main.sh"
-        sudo cp "$TMP_DIR/etc/sv/lazyvoid/run"
+        sudo cp -r "$TMP_DIR/etc/sv/lazyvoid" "/etc/sv/"
         sudo chmod +x /etc/runit/core-services/20-lazy-boot.sh
         sudo chmod +x /usr/local/bin/lazyvoid_main.sh
         sudo chmod +x /etc/sv/lazyvoid/run
         sudo ln -s /etc/sv/lazyvoid /var/service/
         echo "Lazyvoid scripts successfully injected."
     else
-        echo "ERROR: Could not download Lazyvoid scripts. Check your internet connection."
+        echo "ERROR: Could not download Lazyvoid scripts."
         exit 1
     fi
     rm -rf "$TMP_DIR"
@@ -186,7 +204,6 @@ do_setup() {
             read REPLY
             printf "\n"
             if [ "$REPLY" = "y" ] || [ "$REPLY" = "Y" ]; then
-                # Run the function directly (sudo is inside the function where needed)
                 install_nvidia_open_latest
             else
                 printf "\nSkipping automatic compilation. Falling back to Void repos.\n"
@@ -212,7 +229,7 @@ do_setup() {
     sleep 2
 
     # ==========================================
-    # HYBRID CLEANUP (Für ISO-Firstboot)
+    # HYBRID CLEANUP
     # ==========================================
     printf "\n\nCleaning up first-boot files (if present)...\n"
 
@@ -233,34 +250,20 @@ do_setup() {
     printf "\nSYSTEM WILL REBOOT NOW!\n"
     sleep 5
     sudo reboot
-
+    sleep 10
     printf "\nERROR: Reboot failed. Press ENTER to close.\n"
     read _
 }
 
-do_offline_msg() {
-    printf '#############################################################\n'
-    printf '#                                                           #\n'
-    printf '#  WARNING: No internet connection detected.                #\n'
-    printf '#                                                           #\n'
-    printf '#  Please connect to the internet to run the setup.         #\n'
-    printf '#                                                           #\n'
-    printf '#############################################################\n\n'
-    printf "Press ENTER to close this window..."
-    read _
-}
 
 # ==============================================================================
 # 2. MAIN LOGIC
 # ==============================================================================
 
+# CASE 1: Internal setup call in xterm
 if [ "$1" = "--setup" ]; then
+    wait_for_internet
     do_setup
-    exit 0
-fi
-
-if [ "$1" = "--offline" ]; then
-    do_offline_msg
     exit 0
 fi
 
@@ -269,41 +272,30 @@ if [ -f "$LOCK_FILE" ]; then
 fi
 touch "$LOCK_FILE"
 
-# Detect live system (Installer present)
+# CASE 2: ISO Live-System
 if [ -f "/usr/bin/void-installer" ]; then
     printf "Live system detected, launching void-installer.\n" >> "$log"
     rm -f "$LOCK_FILE"
-    xterm -geometry 550x350+100 -e "sudo void-installer"
+    DISPLAY=:0 xterm -T "Void Linux Installer" -geometry 100x30+100+100 -e "sudo void-installer"
     exit 0
 fi
 
-printf "Starting Lazyvoid Converter.\n" >> "$log"
-sleep 1
+# CASE 3: Firstboot (Converter/Firstboot)
+printf "Starting Lazyvoid Converter Environment.\n" >> "$log"
+sudo -v
 
-if ping -c1 1.1.1.1 >/dev/null 2>&1; then
-    printf "System is ONLINE. Starting setup.\n" >> "$log"
-
-    # Check for xterm and install if missing
-    if ! command -v xterm >/dev/null 2>&1; then
-        printf "\nxterm is missing. Updating xbps and installing xterm to display the GUI...\n"
-        sudo xbps-install -Syu xbps
-        sudo xbps-install -y xterm
+# Install xterm if missing
+if ! command -v xterm >/dev/null 2>&1; then
+    if ping -c1 1.1.1.1 >/dev/null 2>&1; then
+        sudo xbps-install -Syu xbps && sudo xbps-install -y xterm
     fi
+fi
 
-    # Execute setup in xterm if available
-    if command -v xterm >/dev/null 2>&1; then
-        xterm -T "Lazyvoid Converter" -geometry 100x30 -e "sh $0 --setup"
-    else
-        # Fallback if xterm install failed
-        sh "$0" --setup
-    fi
+if command -v xterm >/dev/null 2>&1; then
+    DISPLAY=:0 xterm -T "Lazyvoid Setup" -geometry 100x30+100+100 -e "sudo -E sh $0 --setup"
 else
-    printf "System is OFFLINE. Displaying user notice.\n" >> "$log"
-    if command -v xterm >/dev/null 2>&1; then
-        xterm -title "Network Error" -geometry 80x15 -e "sh $0 --offline"
-    else
-        sh "$0" --offline
-    fi
+    # Fallback, if xterm still missing
+    sudo -E sh "$0" --setup
 fi
 
 exit 0
