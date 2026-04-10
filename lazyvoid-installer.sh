@@ -289,7 +289,7 @@ touch "$LOCK_FILE"
 if [ -f "/usr/bin/void-installer" ]; then
     printf "Live system detected, launching void-installer.\n" >> "$log"
     rm -f "$LOCK_FILE"
-    DISPLAY=:0 xterm -T "Void Linux Installer" -geometry 100x30+100+100 -e "sudo void-installer"
+    xterm -T "Void Linux Installer" -geometry 100x30+100+100 -e "sudo void-installer"
     exit 0
 fi
 
@@ -305,7 +305,7 @@ if ! command -v xterm >/dev/null 2>&1; then
 fi
 
 if command -v xterm >/dev/null 2>&1; then
-    DISPLAY=:0 xterm -T "Lazyvoid Setup" -geometry 100x30+100+100 -e "sudo -E sh $0 --setup"
+    xterm -T "Lazyvoid Setup" -geometry 100x30+100+100 -e "sudo -E sh $0 --setup"
 else
     # Fallback, if xterm still missing
     sudo -E sh "$0" --setup
