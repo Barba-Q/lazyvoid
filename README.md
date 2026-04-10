@@ -13,7 +13,7 @@ It creates fully automated btrfs snapshots - as long as btrfs is utilized - righ
 ## How to get Lazyvoid
 
 ### 💿 Option A: The Lazyvoid ISO (Recommended)
-If you want a fresh, out-of-the-box experience with KDE Plasma, Wayland, grab the latest bootable ISO https://drive.google.com/file/d/12AwxwDgcgvwzCgVp58PIw4eNHCByXhgn/view?usp=sharing, boot it, install it, firstboot will handle everything else, done.  It's set and forget.
+If you want a fresh, out-of-the-box experience with KDE Plasma, Wayland, grab the latest bootable ISO https://drive.google.com/drive/folders/1G3_DssizTY0t6ZxRBynfO3PLemHSnY02?usp=sharing, boot it, install it, firstboot will handle everything else, done.  It's set and forget.
 
 ### 🛠️ Option B: The Universal installer (BETA)
 If you're already running Void Linux and don't want to reinstall, use the Lazyvoid installer. 
