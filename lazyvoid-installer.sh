@@ -1,5 +1,5 @@
 #!/bin/sh
-# Version 20260407 - Lazyvoid Universal Installer / Firstboot
+# Version 20260410 - Lazyvoid Universal Installer / Firstboot (Fixed Autostart)
 
 log="/var/log/lazy_installer.log"
 LOCK_FILE="/tmp/lazy_installer.lock"
@@ -31,10 +31,8 @@ wait_for_internet() {
 install_nvidia_open_latest() {
     printf "\n--- STARTING ADVANCED NVIDIA OPEN MODULE INSTALLATION ---\n"
 
-    # Install dependencies for building
     sudo xbps-install -y base-devel linux-lts-headers dkms libglvnd curl
 
-    # Scrape latest version number from Nvidia servers (with User-Agent fake)
     printf "Scraping Nvidia servers for latest driver version...\n"
     LATEST_VERSION=$(curl -s -A "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0" https://download.nvidia.com/XFree86/Linux-x86_64/ | grep -oP 'href="\K[0-9]+\.[0-9]+(\.[0-9]+)?(?=/")' | sort -V | tail -n 1)
 
@@ -52,7 +50,6 @@ install_nvidia_open_latest() {
     curl -# -A "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0" "$RUN_URL" -o "$INSTALLER_PATH"
     chmod +x "$INSTALLER_PATH"
 
-    # --- Applying the Tegra Dummy-Header Hack ---
     KERNEL_VER=$(uname -r)
     HEADERS_DIR=$(find /usr/src -maxdepth 1 -type d -name "kernel-headers-${KERNEL_VER}*" | sort -V | head -n 1)
 
@@ -64,7 +61,6 @@ install_nvidia_open_latest() {
         touch "$HEADERS_DIR/include/linux/platform_data/tegra_mc.h"
     fi
 
-    # --- System configurations (modprobe & dracut) ---
     printf "Writing modprobe and dracut configs (fbdev=1)...\n"
     echo "blacklist nouveau" | sudo tee /etc/modprobe.d/blacklist-nouveau.conf > /dev/null
     echo 'options nvidia_drm modeset=1 fbdev=1' | sudo tee /etc/modprobe.d/nvidia.conf > /dev/null
@@ -72,7 +68,6 @@ install_nvidia_open_latest() {
     echo 'add_drivers+=" nvidia nvidia_modeset nvidia_uvm nvidia_drm "' | sudo tee /etc/dracut.conf.d/nvidia.conf > /dev/null
     echo 'install_items+=" /lib/firmware/nvidia/* "' | sudo tee /etc/dracut.conf.d/nvidia-fw.conf > /dev/null
 
-    # --- Setup DKMS ---
     DKMS_MODULE_NAME="nvidia-open"
     DKMS_SRC_DIR="/usr/src/${DKMS_MODULE_NAME}-${LATEST_VERSION}"
     TEMP_EXTRACT_DIR="/var/tmp/nvidia-installer-extraction"
@@ -115,7 +110,6 @@ EOF
     printf "Rebuilding initramfs...\n"
     sudo dracut --force
 
-    # Cleanup
     sudo rm -rf "$TEMP_EXTRACT_DIR" "$INSTALLER_PATH"
     printf "--- ADVANCED NVIDIA INSTALLATION COMPLETE ---\n"
 }
@@ -134,18 +128,15 @@ do_setup() {
         done
     ) &
 
-    # Swapping to LTS Kernel and basic updates
     printf "\nUpdating base system and swapping to LTS Kernel...\n"
     sudo xbps-install -Sy
     sudo xbps-install -yu xbps
     sudo xbps-install -Syu
     sudo xbps-install -y linux-lts linux-lts-headers
 
-    # Install additional Lazyvoid packages (cleaned up duplicates)
     printf "\n\nInstalling Lazyvoid dependencies...\n"
     sudo xbps-install -y ark zip unzip p7zip unrar grub-btrfs cpupower libgamemode-32bit git curl flatpak wget netcat-openbsd pciutils diffutils btrfs-progs
 
-    # Fetch Lazyvoid Scripts from GitHub (Safe public clone)
     printf "\n\nFetching Lazyvoid Automation Scripts from GitHub...\n"
     TMP_DIR="/tmp/lazyvoid_repo"
     rm -rf "$TMP_DIR"
@@ -156,7 +147,7 @@ do_setup() {
         sudo chmod +x /etc/runit/core-services/20-lazy-boot.sh
         sudo chmod +x /usr/local/bin/lazyvoid_main.sh
         sudo chmod +x /etc/sv/lazyvoid/run
-        sudo ln -s /etc/sv/lazyvoid /var/service/
+        sudo ln -s /etc/sv/lazyvoid /var/service/ 2>/dev/null || true
         echo "Lazyvoid scripts successfully injected."
     else
         echo "ERROR: Could not download Lazyvoid scripts."
@@ -164,7 +155,6 @@ do_setup() {
     fi
     rm -rf "$TMP_DIR"
 
-    # CPU Governor (Live-Set only)
     if sudo cpupower frequency-info -g | grep -q "performance"; then
         printf "Setting CPU governor to performance...\n"
         sudo cpupower frequency-set -g performance
@@ -172,10 +162,8 @@ do_setup() {
         echo "Info: Performance-Governor not available, you're probably on a virtual system."
     fi
 
-    # Adding noatime to fstab
     sudo cp /etc/fstab /etc/fstab.bak.$(date +%F_%T)
     awk '$3 ~ /^(ext4|xfs|btrfs)$/ && $4 !~ /noatime/ { $4 = $4",noatime" } 1' /etc/fstab > /tmp/fstab.new
-
     if [ -s /tmp/fstab.new ]; then
         sudo mv -f /tmp/fstab.new /etc/fstab
         sudo chmod 644 /etc/fstab
@@ -185,7 +173,6 @@ do_setup() {
         exit 1
     fi
 
-    # Detect Nvidia hardware and Generation
     printf "\n\nChecking for Nvidia hardware...\n"
     GPU_INFO=$(lspci -nn | grep -i -E "VGA|3D" | grep -i NVIDIA || true)
 
@@ -211,7 +198,6 @@ do_setup() {
             fi
         fi
 
-        # Create prime-run Wrapper for ALL Nvidia users
         printf "Creating prime-run wrapper for Optimus support...\n"
         sudo tee /usr/local/bin/prime-run > /dev/null << 'EOF'
 #!/bin/sh
@@ -222,13 +208,11 @@ export __VK_LAYER_NV_optimus=NVIDIA_only
 exec "$@"
 EOF
         sudo chmod +x /usr/local/bin/prime-run
-
     else
         printf "No Nvidia hardware detected, moving on.\n\n"
         sleep 2
     fi
 
-    # Intel microcode installation
     if lscpu | grep -iq 'Intel'; then
         printf "Intel CPU detected, installing intel-ucode...\n"
         sudo xbps-install -y intel-ucode
@@ -236,7 +220,6 @@ EOF
         printf "No Intel CPU detected, skipping intel-ucode.\n"
     fi
 
-    # Configure Flathub
     printf "\n\nConfiguring Flathub repository...\n"
     sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
     sleep 2
@@ -256,7 +239,6 @@ EOF
     fi
     sleep 2
 
-    # Final messages + reboot
     printf "\n\nConversion to Lazyvoid is complete!\n"
     printf "Your system is now on the LTS kernel and fully automated.\n"
     sleep 4
@@ -268,13 +250,16 @@ EOF
     read _
 }
 
-
 # ==============================================================================
 # 2. MAIN LOGIC
 # ==============================================================================
 
-# CASE 1: Internal setup call in xterm
+# CASE 1: Internal setup call
 if [ "$1" = "--setup" ]; then
+    printf "Welcome to Lazyvoid Firstboot.\n"
+    # Hier kommt die Passwort-Abfrage, da das Terminal jetzt 100% offen ist.
+    sudo -v || { echo "Sudo failed. Exiting."; sleep 3; exit 1; }
+    
     wait_for_internet
     do_setup
     exit 0
@@ -289,26 +274,31 @@ touch "$LOCK_FILE"
 if [ -f "/usr/bin/void-installer" ]; then
     printf "Live system detected, launching void-installer.\n" >> "$log"
     rm -f "$LOCK_FILE"
-    xterm -T "Void Linux Installer" -geometry 100x30+100+100 -e "sudo void-installer"
+    
+    if [ -n "$DISPLAY" ]; then
+        if command -v xterm >/dev/null 2>&1; then
+            xterm -T "Void Linux Installer" -geometry 100x30+100+100 -e "sudo void-installer"
+        elif command -v konsole >/dev/null 2>&1; then
+            konsole -e "sudo void-installer"
+        else
+            sudo void-installer
+        fi
+    else
+        sudo void-installer
+    fi
     exit 0
 fi
 
 # CASE 3: Firstboot (Converter/Firstboot)
-printf "Starting Lazyvoid Converter Environment.\n" >> "$log"
-sudo -v
+printf "Starting Lazyvoid Converter Environment from Autostart.\n" >> "$log"
 
-# Install xterm if missing
-if ! command -v xterm >/dev/null 2>&1; then
-    if ping -c1 1.1.1.1 >/dev/null 2>&1; then
-        sudo xbps-install -Syu xbps && sudo xbps-install -y xterm
+if [ -n "$DISPLAY" ]; then
+    if command -v xterm >/dev/null 2>&1; then
+        exec xterm -T "Lazyvoid Setup" -geometry 100x30+100+100 -e "sh \"$0\" --setup"
+    elif command -v konsole >/dev/null 2>&1; then
+        exec konsole -e "sh \"$0\" --setup"
     fi
 fi
 
-if command -v xterm >/dev/null 2>&1; then
-    xterm -T "Lazyvoid Setup" -geometry 100x30+100+100 -e "sudo -E sh $0 --setup"
-else
-    # Fallback, if xterm still missing
-    sudo -E sh "$0" --setup
-fi
-
-exit 0
+# Fallback
+exec sh "$0" --setup
